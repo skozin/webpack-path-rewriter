@@ -382,7 +382,7 @@ class PathRewriter
       try {
         var rwPath = this.rewritePath(srcPath, moduleData)
         rwPath = this.prependPublicPath(moduleData.publicPath, rwPath)
-        this.opts.silent || console.log(
+        this.opts.silent || (srcPath != rwPath) && console.log(
           `PathRewriter[ ${ moduleData.relPath } ]: "${ srcPath }" -> "${ rwPath }"`
         )
         return moduleData.pathReplacer.replace(/\[(path|\d+)\]/g, (_, t) => {
@@ -439,6 +439,9 @@ class PathRewriter
 
   rewriteGeneratedAssetPath(srcPath, moduleData)
   {
+    if (ABS_PATH_REGEXP.test(srcPath))
+      return srcPath
+
     var absPath = path.join(moduleData.context, srcPath),
         relPath = path.relative(moduleData.topLevelContext, absPath)
 
