@@ -1,0 +1,37 @@
+{
+  "name": "webpack-path-rewriter",
+  "version": "1.1.0",
+  "description": "Webpack plugin for replacing resources' paths with public ones",
+  "author": "Sam Kozin <sam.kozin@gmail.com>",
+  "scripts": {
+    "prepublish": "babel ./es6 --out-dir .",
+    "test": "echo 'Sorry, no tests yet' && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skozin/webpack-path-rewriter.git"
+  },
+  "keywords": [
+    "webpack",
+    "plugin",
+    "assets",
+    "hashing",
+    "html"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/skozin/webpack-path-rewriter/issues"
+  },
+  "homepage": "https://github.com/skozin/webpack-path-rewriter",
+  "dependencies": {
+    "loader-utils": "^0.2.6"
+  },
+  "devDependencies": {
+    "babel": "^4.7.9"
+  },
+  "files": [
+    "index.js",
+    "es6/index.js"
+  ],
+  "main": "index.js"
+}
