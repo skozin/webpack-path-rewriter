@@ -289,6 +289,8 @@ class PathRewriter
   {
     compiler.plugin('compilation', (compilation) => {
       compilation.plugin('normal-module-loader', (loaderContext, module) => {
+        if (loaderContext[ __dirname ])
+          throw new Error('cannot use more than one instance of PathRewriter in the plugins list')
         loaderContext[ __dirname ] = this
       })
     })
