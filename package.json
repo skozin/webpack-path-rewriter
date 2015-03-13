@@ -5,6 +5,7 @@
   "author": "Sam Kozin <sam.kozin@gmail.com>",
   "scripts": {
     "prepublish": "babel ./es6 --out-dir .",
+    "watch": "babel --watch ./es6 --out-dir .",
     "test": "echo 'Sorry, no tests yet' && exit 1"
   },
   "repository": {
