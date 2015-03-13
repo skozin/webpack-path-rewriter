@@ -474,7 +474,7 @@ function escapeRegExp(s) {
 
 
 function extend(dst, src, filter) {
-  Object.keys(src).forEach(filter == undefined
+  if (src) Object.keys(src).forEach(filter == undefined
     ? key => { dst[ key ] = src[ key ] }
     : key => {
       if (filter(key)) {
