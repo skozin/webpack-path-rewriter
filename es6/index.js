@@ -42,10 +42,7 @@ class PathRewriter
    *
    *   Defaults to '[path][name].[ext]'.
    *
-   * - nameRegExp: see `name`.
-   *
-   * - context: assume that the resource is located in the specified directory;
-   *   also see `name`.
+   * - nameRegExp, context: see `name`.
    *
    * - publicPath: allows to override the global output.publicPath setting.
    *
@@ -167,7 +164,7 @@ class PathRewriter
     }
 
     var query = loaderUtils.parseQuery(this.query && this.query.replace(/:BANG:/g, '!')),
-        topLevelContext = query.context || this.options.context,
+        topLevelContext = this.options.context,
         publicPath = query.publicPath || this.options.output.publicPath || ''
 
     if (publicPath.length && publicPath[ publicPath.length - 1 ] != '/') {
@@ -175,12 +172,12 @@ class PathRewriter
     }
 
     var url = loaderUtils.interpolateName(this, query.name || '[path][name].[ext]', {
-      context: topLevelContext,
       content: content,
+      context: query.context || topLevelContext,
       regExp: query.nameRegExp
     })
 
-    var assetRequests = rewriter.addModule({ url, content, publicPath, topLevelContext,
+    var moduleData = {url, content, publicPath, topLevelContext,
       request: this.request,
       context: this.context,
       relPath: path.relative(topLevelContext, this.resourcePath),
@@ -190,16 +187,22 @@ class PathRewriter
         ? rewriter.pathMatchIndex
         : query.pathMatchIndex
       )
-    })
+    }
 
     var exportStatement = 'module.exports = "' + publicPath + url + (rewriter.opts.includeHash
       ? '" // content hash: ' + loaderUtils.interpolateName(this, '[hash]', { content })
       : '"'
     )
 
-    return assetRequests
-      .map(req => `require(${ JSON.stringify(req) })`)
-      .join('\n') + '\n' + exportStatement
+    var callback = this.async(); PathRewriter.extractAssets(this, moduleData, assetRequests =>
+    {
+      rewriter.addModule(moduleData)
+
+      callback(null, assetRequests
+        .map(req => `require(${ JSON.stringify(req) })`)
+        .join('\n') + '\n' + exportStatement
+      )
+    })
   }
 
 
@@ -223,48 +226,62 @@ class PathRewriter
   }
 
 
-  addModule(moduleData)
+  static extractAssets(loaderCtx, moduleData, cb)
   {
-    var assetsData = this.findAssetsPaths(moduleData).map(path => ({
-      path: path,
-      request: loaderUtils.urlToRequest(path),
-      rwPath: undefined
-    }))
-
-    var assetDataByRequest = {},
-        assetDataByPath = {}
-
-    assetsData.forEach(data => {
-      assetDataByRequest[ data.request ] = data
-      assetDataByPath[ data.path ] = data
+    var paths = PathRewriter.findNonWildcardPaths(moduleData),
+        numPaths = paths.length,
+        numPathsDone = 0,
+        assetsData = []
+    paths.forEach(path => {
+      var request = loaderUtils.urlToRequest(path)
+      // we need to discard all possibly generated assets, i.e. those
+      // that are not present in the source tree, because we cannot
+      // require them
+      loaderCtx.resolve(moduleData.context, request, (err, _) => {
+        if (err == null) {
+          assetsData.push({ path, request, rwPath: undefined })
+        }
+        if (++numPathsDone == numPaths) {
+          done(assetsData)
+        }
+      })
     })
-
-    moduleData.assetsData = assetsData
-    moduleData.assetDataByRequest = assetDataByRequest
-    moduleData.assetDataByPath = assetDataByPath
-
-    this.modules.push(moduleData)
-    this.modulesByRequest[ moduleData.request ] = moduleData
-
-    return assetsData.map(data => data.request)
+    function done(assetsData) {
+      var byPath = {}, byRequest = {}
+      assetsData.forEach(data => {
+        byRequest[ data.request ] = data
+        byPath[ data.path ] = data
+      })
+      moduleData.assetDataByPath = byPath
+      moduleData.assetDataByRequest = byRequest
+      cb(assetsData.map(data => data.request))
+    }
   }
 
 
-  findAssetsPaths(moduleData)
+  static findNonWildcardPaths({ content, pathRegExp, pathMatchIndex })
   {
     var results = [],
-        content = moduleData.content,
-        re = moduleData.pathRegExp,
-        matchIndex = moduleData.pathMatchIndex,
         matches
-    while (matches = re.exec(content)) {
-      var path = trim(matches[ matchIndex ])
-      if (path && path.indexOf('*') == -1 && loaderUtils.isUrlRequest(path)) {
+    while (matches = pathRegExp.exec(content)) {
+      var path = trim(matches[ pathMatchIndex ])
+      if (path
+       && path.indexOf('*') == -1
+       && results.indexOf(path) == -1
+       && loaderUtils.isUrlRequest(path)
+      ){
         results.push(path)
       }
     }
-    re.lastIndex = 0
+    pathRegExp.lastIndex = 0
     return results
+  }
+
+
+  addModule(moduleData)
+  {
+    this.modules.push(moduleData)
+    this.modulesByRequest[ moduleData.request ] = moduleData
   }
 
 
@@ -288,13 +305,13 @@ class PathRewriter
   {
     compilation.modules.forEach(module => {
       var moduleData = this.modulesByRequest[ module.request ]
-      moduleData && this.extractModuleAssetsPaths(moduleData, module)
+      moduleData && this.extractModuleAssetsPublicPaths(moduleData, module)
     })
     callback()
   }
 
 
-  extractModuleAssetsPaths(moduleData, module)
+  extractModuleAssetsPublicPaths(moduleData, module)
   {
     var assetDataByRequest = moduleData.assetDataByRequest,
         deps = module.dependencies
@@ -395,9 +412,15 @@ class PathRewriter
     if (rwPath)
       return rwPath
 
-    rwPath = srcPath.indexOf('*') >= 0
-      ? this.rewriteWildcardPath(srcPath, moduleData)
-      : this.rewriteAssetPath(srcPath, moduleData)
+    var assetData = moduleData.assetDataByPath[ srcPath ]
+    if (assetData) {
+      if (assetData.error)
+        throw assetData.error
+      rwPath = assetData.rwPath
+    }
+    else {
+      rwPath = this.rewriteGeneratedAssetPath(srcPath, moduleData)
+    }
 
     if (rwPath == undefined) {
       // in watch mode, sometimes some assets are not listed during
@@ -414,20 +437,7 @@ class PathRewriter
   }
 
 
-  rewriteAssetPath(srcPath, moduleData)
-  {
-    var assetData = moduleData.assetDataByPath[ srcPath ]
-    if (assetData == undefined) {
-      return undefined
-    }
-    if (assetData.error) {
-      throw assetData.error
-    }
-    return assetData.rwPath
-  }
-
-
-  rewriteWildcardPath(srcPath, moduleData)
+  rewriteGeneratedAssetPath(srcPath, moduleData)
   {
     var absPath = path.join(moduleData.context, srcPath),
         relPath = path.relative(moduleData.topLevelContext, absPath)
