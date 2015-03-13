@@ -79,7 +79,7 @@ After the build, `_dist/index.html` will contain the following:
 
 ## Usage
 
-This plugin is content-agnostic, so doesn't perform any parsing. You need to explicitly mark
+This plugin is content-agnostic, so it doesn't perform any parsing. You need to explicitly mark
 each path that needs to be rewritten.
 
 By default, you do this by wrapping such paths inside the `"[[original/path]]"` construction, which
@@ -93,21 +93,20 @@ There are two types of assets.
 Most of the assets already exist in the source tree before you run the build. To rewrite paths to
 such assets, just mark these paths with the special construction described above.
 
-For example, if you have `views/index.jade` and `images/hi.png`, in the index.jade you can write
-`"[[../images/hi.png]]"` and it will be replaced with whatever public path `images/hi.png` will be
+For example, if you have `views/index.jade` and `images/hi.png`, in the index.jade you can specify
+`"[[../images/hi.png]]"` and it will be replaced with whatever public path `images/hi.png` is
 assigned to, e.g. `"/static/images/hi-somelonghash.png"`.
 
 ### 2. Generated assets
 
-Some of the assets become generated as a result of the build. These include JavaScript bundles
-(chunks) and files produced by
+Some of the assets appear as a result of the build. These include JavaScript bundles (chunks)
+and files produced by
 [extract-text-webpack-plugin](https://github.com/webpack/extract-text-webpack-plugin).
-To rewrite paths to an asset of this kind, you need to specify its path and replace any variable
-parts of this path with asterisk `*` symbols.
+To rewrite path to an asset of this kind, you need to replace any variable parts of this path
+with asterisk `*` symbols.
 
-For example, if you have `views/index.jade` and your JS bundle gets placed to
-`[hash]/scripts/app-[chunkhash].js`, the path to the JS bundle should be
-specified as `"[[../scripts/app-*.js]]"`.
+For example, to rewrite path from `views/index.jade` to the JS bundle which gets placed to
+`[hash]/scripts/app-[chunkhash].js`, the path should be specified as `"[[../*/scripts/app-*.js]]"`.
 
 
 ## Customizing the path marker
@@ -132,8 +131,7 @@ end with some extension (non-relative paths are automatically skipped):
 
 #### `PathRewriter.rewriteAndEmit(loader | opts)`
 
-Marks a resource for rewriting paths and emitting to the file system. Use it in conjunction with the
-`new PathRewriter()` plugin.
+Marks a resource for rewriting paths and emitting to the file system. Use it in conjunction with the `new PathRewriter()` in the plugins list.
 
 Takes one argument, which is either string or object. If string, then it specifies the resource's
 loader string along with the options, e.g.
@@ -144,10 +142,10 @@ PathRewriter.rewriteAndEmit('jade-html?pretty')
 PathRewriter.rewriteAndEmit('?name=[path][name].[ext]!jade-html?pretty')
 ```
 
-Object form allows to specify the following options:
+Object form allows to pass the following options:
 
 * `loader` the resource's loader string.
-* `loaders` the array of loaders; mutually exclusive with the `loader` option.
+* `loaders` an array of loaders; mutually exclusive with the `loader` option.
 * `name` the path to the output file. Defaults to `"[path][name].[ext]"`. May contain the
   following tokens:
     - `[ext]` the extension of the resource;
@@ -178,13 +176,14 @@ A plugin that emits to the filesystem all resources that were marked with the
 `PathRewriter.rewriteAndEmit()` loader. Options:
 
 * `silent` don't print rewritten paths. Defaults to `false`.
-* `emitStats` write stats.json file. May be string specifying the file's name. Defaults to `true`.
+* `emitStats` write `stats.json` file. May be string specifying the file's name.
+   Defaults to `true`.
 * `pathRegExp` regular expression for matching paths. Defaults to `/"\[\[(.*?)\]\]"/`, which tests
   for `"[[...]]"` constructions and captures the string between the braces.
 * `pathMatchIndex` the index of capturing group in the `pathRegExp` that corresponds to a path.
   Defaults to `1`.
-* `pathReplacer` template for replacing matched path with the rewritten one. Defaults to `"[path]"`.
-  May contain following tokens:
+* `pathReplacer` template for replacing matched path with the rewritten one. Defaults to
+  `"[path]"`. May contain following tokens:
     - `[path]` the rewritten path;
     - `[N]` the content of N-th capturing group of `pathRegExp`.
 * `includeHash` make compilation's hash dependent on contents of this resource. Useful with live
