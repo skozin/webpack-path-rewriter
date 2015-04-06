@@ -232,6 +232,9 @@ class PathRewriter
         numPaths = paths.length,
         numPathsDone = 0,
         assetsData = []
+    if (paths.length == 0) {
+      return done(assetsData)
+    }
     paths.forEach(path => {
       var request = loaderUtils.urlToRequest(path)
       // we need to discard all possibly generated assets, i.e. those
