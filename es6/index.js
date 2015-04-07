@@ -447,10 +447,7 @@ class PathRewriter
     if (ABS_PATH_REGEXP.test(srcPath))
       return srcPath
 
-    var absPath = path.join(moduleData.context, srcPath),
-        relPath = path.relative(moduleData.topLevelContext, absPath)
-
-    var parts = relPath.split(/[*]+/)
+    var parts = srcPath.split(/[*]+/)
 
     if (parts.join('').length == 0) {
       throw new PathRewriterError(
