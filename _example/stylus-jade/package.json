@@ -12,7 +12,8 @@
     "jade-html-loader": "bline/jade-html-loader",
     "stylus": "^0.49.3",
     "stylus-loader": "shama/stylus-loader",
-    "webpack": "^1.7.2"
+    "webpack": "^1.7.2",
+    "webpack-path-rewriter": "^1.1.2"
   },
   "dependencies": {}
 }

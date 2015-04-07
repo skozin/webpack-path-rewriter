@@ -1,5 +1,5 @@
 var ExtractTextPlugin = require('extract-text-webpack-plugin'),
-    PathRewriterPlugin = require('../')
+    PathRewriterPlugin = require('webpack-path-rewriter')
 
 module.exports = {
   entry: {
@@ -26,7 +26,7 @@ module.exports = {
     }]
   },
   plugins: [
-    new ExtractTextPlugin('app.css', { allChunks: true }),
+    new ExtractTextPlugin('app-[chunkhash].css', { allChunks: true }),
     new PathRewriterPlugin()
   ]
 }
