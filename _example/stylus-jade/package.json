@@ -1,0 +1,18 @@
+{
+  "name": "webpack-path-rewriter-example",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "webpack"
+  },
+  "devDependencies": {
+    "css-loader": "^0.9.1",
+    "extract-text-webpack-plugin": "^0.3.8",
+    "file-loader": "^0.8.1",
+    "jade": "^1.9.2",
+    "jade-html-loader": "bline/jade-html-loader",
+    "stylus": "^0.49.3",
+    "stylus-loader": "shama/stylus-loader",
+    "webpack": "^1.7.2"
+  },
+  "dependencies": {}
+}
