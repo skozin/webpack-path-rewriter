@@ -134,6 +134,7 @@ class PathRewriter
       silent: false,
       emitStats: true,
       includeHash: false,
+      useQueryString: false,
       pathRegExp: undefined,
       pathReplacer: undefined,
       pathMatchIndex: undefined
@@ -338,7 +339,7 @@ class PathRewriter
         continue
       }
 
-      assetData.rwPath = assets[0]
+      assetData.rwPath = {name: assets[0], chunkHash: "unknown"}
     }
   }
 
@@ -347,7 +348,9 @@ class PathRewriter
   {
     var stats = compiler.getStats().toJson()
     
-    this.compilationAssetsPaths = stats.assets.map(asset => asset.name)
+
+
+    this.compilationAssetsPaths = stats.assets.map(asset => ({name: asset.name, chunkHash: stats.chunks[asset.chunks[0]].hash}))
     this.compilationRwPathsCache = {}
 
     this.modules.forEach(moduleData => {
@@ -386,12 +389,15 @@ class PathRewriter
       var srcPath = trim(matches[ moduleData.pathMatchIndex ])
       try {
         var rwPath = this.rewritePath(srcPath, moduleData)
-        rwPath = this.prependPublicPath(moduleData.publicPath, rwPath)
-        this.opts.silent || (srcPath != rwPath) && console.log(
-          `PathRewriter[ ${ moduleData.relPath } ]: "${ srcPath }" -> "${ rwPath }"`
+        var publicRwPath = this.prependPublicPath(moduleData.publicPath, rwPath.name)
+        if (this.opts.useQueryString) {
+           publicRwPath += '?' + rwPath.chunkHash
+        }
+        this.opts.silent || (srcPath != publicRwPath) && console.log(
+          `PathRewriter[ ${ moduleData.relPath } ]: "${ srcPath }" -> "${ publicRwPath }"`
         )
         return moduleData.pathReplacer.replace(/\[(path|\d+)\]/g, (_, t) => {
-          return t == 'path' ? rwPath : matches[ +t ]
+          return t == 'path' ? publicRwPath : matches[ +t ]
         })
       }
       catch(e) {
@@ -433,7 +439,7 @@ class PathRewriter
       rwPath = this.rwPathsCache[ key ]
     }
 
-    if (rwPath == undefined || rwPath.length == 0) {
+    if (rwPath == undefined || rwPath.name.length == 0) {
       throw new PathRewriterError(`could not resolve path "${ srcPath }"`, moduleData)
     }
 
@@ -460,7 +466,7 @@ class PathRewriter
 
     for (var i = 0; i < this.compilationAssetsPaths.length; ++i) {
       var rwPath = this.compilationAssetsPaths[i]
-      if (searchRE.test(rwPath)) {
+      if (searchRE.test(rwPath.name)) {
         return rwPath
       }
     }
