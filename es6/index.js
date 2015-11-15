@@ -6,6 +6,8 @@ const PATH_REGEXP = /"\[\[(.*?)\]\]"/g,
       PATH_MATCH_INDEX = 1,
       PATH_REPLACER = '"[path]"'
 
+const INLINE_REGEXP = /\[\[\s*INLINE\(([^)]*)\)\s*\]\]/g
+
 const ABS_PATH_REGEXP = /^[/]|^\w+:[/][/]/,
       HASH_REGEXP_SRC = '[\\w\\d_-]+[=]*'
 
@@ -80,8 +82,19 @@ class PathRewriter
     }
 
     var query = extend({}, rwOpts, (key) => key != 'loader' && key != 'loaders')
+
     if (query.pathRegExp) {
       let re = query.pathRegExp; query.pathRegExp = re instanceof RegExp ? {
+        source: re.source,
+        flags: (re.ignoreCase ? 'i' : '') + (re.multiline ? 'm' : '')
+      } : {
+        source: '' + re,
+        flags: ''
+      }
+    }
+
+    if (query.inlineRegExp) {
+      let re = query.inlineRegExp; query.inlineRegExp = re instanceof RegExp ? {
         source: re.source,
         flags: (re.ignoreCase ? 'i' : '') + (re.multiline ? 'm' : '')
       } : {
@@ -138,11 +151,12 @@ class PathRewriter
       pathReplacer: undefined,
       pathMatchIndex: undefined
     }, opts)
-    this.pathRegExp = PathRewriter.makePathRegExp(this.opts.pathRegExp) || PATH_REGEXP
+    this.pathRegExp = PathRewriter.makeRegExp(this.opts.pathRegExp) || PATH_REGEXP
     this.pathMatchIndex = this.opts.pathMatchIndex == undefined
       ? PATH_MATCH_INDEX
       : this.opts.pathMatchIndex
     this.pathReplacer = this.opts.pathReplacer || PATH_REPLACER
+    this.inlineRegExp = PathRewriter.makeRegExp(this.opts.inlineRegExp) || INLINE_REGEXP
     this.rwPathsCache = {}
     this.modules = []
     this.modulesByRequest = {}
@@ -181,12 +195,13 @@ class PathRewriter
       request: this.request,
       context: this.context,
       relPath: path.relative(topLevelContext, this.resourcePath),
-      pathRegExp: PathRewriter.makePathRegExp(query.pathRegExp) || rewriter.pathRegExp,
+      pathRegExp: PathRewriter.makeRegExp(query.pathRegExp) || rewriter.pathRegExp,
       pathReplacer: query.pathReplacer || rewriter.pathReplacer,
       pathMatchIndex: +(query.pathMatchIndex == undefined
         ? rewriter.pathMatchIndex
         : query.pathMatchIndex
-      )
+      ),
+      inlineRegExp: PathRewriter.makeRegExp(query.inlineRegExp) || rewriter.inlineRegExp
     }
 
     var exportStatement = 'module.exports = "' + publicPath + url + (rewriter.opts.includeHash
@@ -206,7 +221,7 @@ class PathRewriter
   }
 
 
-  static makePathRegExp(desc)
+  static makeRegExp(desc)
   {
     if (desc == undefined) {
       return undefined
@@ -401,6 +416,18 @@ class PathRewriter
         compiler.errors.push(e)
         return srcPath
       }
+    }).replace(moduleData.inlineRegExp, (match, assetUrl) => {
+      let asset = compiler.assets[ assetUrl ]
+      if (!asset) {
+        compiler.errors.push(new Error(
+          `Cannot inline asset "${ assetUrl }" in ${ moduleData.relPath }: not found`
+        ))
+        return match
+      }
+      else if (!this.opts.silent) {
+        console.log(`PathRewriter[ ${ moduleData.relPath } ]: inlined "${ assetUrl }"`)
+      }
+      return asset.source()
     })
     compiler.assets[ moduleData.url ] = {
       source: () => content,
@@ -511,10 +538,14 @@ function PathRewriterError(msg, moduleData)
 PathRewriterError.prototype = Object.create(Error.prototype)
 
 
-export default function PathRewriterEntry(arg)
+function PathRewriterEntry(arg)
 {
   return this instanceof PathRewriterEntry
     ? new PathRewriter(arg) // called with new => plugin
     : PathRewriter.loader.call(this, arg) // called as a funtion => loader
 }
 PathRewriterEntry.rewriteAndEmit = PathRewriter.rewriteAndEmit
+
+
+module.exports = PathRewriterEntry
+export default PathRewriterEntry
