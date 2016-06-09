@@ -402,7 +402,7 @@ class PathRewriter
       try {
         var rwPath = this.rewritePath(srcPath, moduleData)
         rwPath = this.prependPublicPath(moduleData.publicPath, rwPath)
-        this.opts.silent || (srcPath != rwPath) && console.log(
+        this.opts.silent || (srcPath != rwPath) && console.error(
           `PathRewriter[ ${ moduleData.relPath } ]: "${ srcPath }" -> "${ rwPath }"`
         )
         return moduleData.pathReplacer.replace(/\[(path|\d+)\]/g, (_, t) => {
@@ -425,7 +425,7 @@ class PathRewriter
         return match
       }
       else if (!this.opts.silent) {
-        console.log(`PathRewriter[ ${ moduleData.relPath } ]: inlined "${ assetUrl }"`)
+        console.error(`PathRewriter[ ${ moduleData.relPath } ]: inlined "${ assetUrl }"`)
       }
       return asset.source()
     })
