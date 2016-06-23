@@ -474,16 +474,22 @@ class PathRewriter
     if (ABS_PATH_REGEXP.test(srcPath))
       return srcPath
 
-    var parts = srcPath.split(/[*]+/)
+    var searchRE
 
-    if (parts.join('').length == 0) {
-      throw new PathRewriterError(
-        `invalid wildcard path "${ srcPath }", must contain at least one non-wildcard symbol`,
-        moduleData
-      )
+    if (/^\^.+\$$/.test(srcPath)) {
+      searchRE = new RegExp(srcPath)
+    } else {
+      var parts = srcPath.split(/[*]+/)
+
+      if (parts.join('').length == 0) {
+        throw new PathRewriterError(
+          `invalid wildcard path "${ srcPath }", must contain at least one non-wildcard symbol`,
+          moduleData
+        )
+      }
+
+      searchRE = new RegExp('^' + parts.map(escapeRegExp).join(HASH_REGEXP_SRC) + '$')
     }
-
-    var searchRE = new RegExp('^' + parts.map(escapeRegExp).join(HASH_REGEXP_SRC) + '$')
 
     for (var i = 0; i < this.compilationAssetsPaths.length; ++i) {
       var rwPath = this.compilationAssetsPaths[i]
