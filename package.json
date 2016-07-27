@@ -1,10 +1,10 @@
 {
   "name": "webpack-path-rewriter",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Webpack plugin for replacing resources' paths with public ones",
   "author": "Sam Kozin <sam.kozin@gmail.com>",
   "scripts": {
-    "prepublish": "babel ./es6 --presets es2015 --out-dir .",
+    "prepublish": "babel ./es6 --presets es2015 --out-dir ./lib",
     "watch": "babel --watch ./es6 --presets es2015 --out-dir .",
     "test": "echo 'Sorry, no tests yet' && exit 1"
   },
@@ -35,5 +35,5 @@
     "index.js",
     "es6/index.js"
   ],
-  "main": "index.js"
+  "main": "lib/index.js"
 }
